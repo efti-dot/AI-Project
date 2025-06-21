@@ -16,21 +16,21 @@ col1, col2, col3 = st.columns(3)
 
 # COLUMN 1: Messenger
 with col1:
-    st.image("icons/ig.jpg", width=100)
+    st.image("Dashboard_AI/icons/ig.jpg", width=100)
     st.info(f"📩 Incoming: {messenger_msg}")
     messenger_reply = generate_reply(messenger_msg)
     st.text_area("Instagram Reply", value=messenger_reply, height=120)
 
 # COLUMN 2: Facebook
 with col2:
-    st.image("icons/fb.png", width=100)
+    st.image("Dashboard_AI/icons/fb.png", width=100)
     st.warning(f"📩 Incoming: {facebook_msg}")
     facebook_reply = generate_reply(facebook_msg)
     st.text_area("Facebook Reply", value=facebook_reply, height=120)
 
 # COLUMN 3: YouTube
 with col3:
-    st.image("icons/yt.jpg", width=100)
+    st.image("Dashboard_AI/icons/yt.jpg", width=100)
     st.success(f"📩 Incoming: {youtube_msg}")
     youtube_reply = generate_reply(youtube_msg)
     st.text_area("YouTube Reply", value=youtube_reply, height=120)
