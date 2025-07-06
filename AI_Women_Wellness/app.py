@@ -1,5 +1,5 @@
 import streamlit as st
-
+from config import OpenAIConfig
 
 st.title("AI Women Wellness Coach!")
 st.write("Talk to your wellness companion. I'm here to help you with your wellness journey.")
@@ -52,15 +52,35 @@ def talk_with_coach():
 def lifestyle_tips():
     st.subheader("Lifestyle Tips")
     st.write("Get personalized tips for a healthier lifestyle.")
-    tips = [
-        "Drink plenty of water daily.",
-        "Incorporate more fruits and vegetables into your diet.",
-        "Exercise regularly, even if it's just a short walk.",
-        "Practice mindfulness and meditation.",
-        "Get enough sleep each night."
-    ]
-    for tip in tips:
-        st.write(f"- {tip}")
+    
+    if "messages_lifestyle_tips" not in st.session_state:
+        st.session_state.messages_lifestyle_tips = []
+
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    user_input = st.chat_input("Ask your coach...", key="user_input")
+
+    if user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.write(user_input)
+
+        # Add the dynamic prompt based on user's choice
+        if user_choice == "Talk with Coach":
+            response = openai_config.get_response(f"Wellness coach: {user_input}")
+        elif user_choice == "Lifestyle Tips":
+            response = openai_config.get_response(f"Provide wellness lifestyle tips based on: {user_input}")
+        elif user_choice == "Mood Tracker":
+            response = openai_config.get_response(f"How can I improve my mood based on: {user_input}")
+        else:
+            response = openai_config.get_response(user_input)
+
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+        with st.chat_message("assistant"):
+            st.write(response)
 
 
 def mood_tracker():
