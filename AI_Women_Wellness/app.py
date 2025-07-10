@@ -1,52 +1,98 @@
 import streamlit as st
 from config import OpenAIConfig
 
+# API key
+api_key = "api_key"
+openai_config = OpenAIConfig(api_key=api_key)
+
 st.title("AI Women Wellness Coach!")
 st.write("Talk to your wellness companion. I'm here to help you with your wellness journey.")
 
-
 with st.sidebar:
     st.header("Navigation")
-    st.write("Customize your experience:")
+    st.write("Share your experience:")
 
-    
-    user_choice = st.selectbox("Options", ["Talk with Coach", "Lifestyle Tips", "Mood Tracker", "Suggestion"], index=0)
-
-    
-    cycle_phase = st.selectbox("Phase", ["Menstrual", "Follicular", "Ovulation", "Luteal", "Perimenopause", "Menopause"], index=0)
+    user_mood = st.selectbox("Mood", ["Happy", "Sad", "Anxious", "Stressed", "Neutral"], index=0)
+    symptoms = st.multiselect("Select symptoms:", ["Headache", "Fatigue", "Nausea", "Stress", "Back Pain", "Bloating", "Cravings", "Low Mood", 
+                                                   "Hot Flashes", "Poor Sleep", "None", "Other"])
+    energy_level = st.slider("How energetic do you feel today?", 0, 10, 5)
+    submit_btn = st.button("Submit")
 
     st.checkbox("Enable Notifications", value=True)
     st.selectbox("Language", ["English"], index=0)
 
+if "messages_ai_coach" not in st.session_state:
+    st.session_state.messages_ai_coach = []
 
-
-def talk_with_coach():
-    st.subheader("Talk with Your Coach")
-    st.write("Ask your wellness coach anything about your health, fitness, or wellness journey.")
-
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
+# --- Ask for user input if not provided ---
+if not st.session_state.messages_ai_coach:
+    # Friendly prompt to gather user input
+    warm_prompt = """
+    Hi there! I’m your wellness coach. Before we get started, I would love to know a bit about how you’re feeling today.
     
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
-
+    Please share: Your current mood, symptoms and energy level.
     
-    user_input = st.chat_input("Ask your coach...", key="user_input")
+    Once you click "Submit," I’ll give you personalized suggestions and tips based on your input!
+    """
 
+    st.session_state.messages_ai_coach.append({"role": "assistant", "content": warm_prompt})
+    with st.chat_message("assistant"):
+        st.write(warm_prompt)
+
+# --- Show message history ---
+for message in st.session_state.messages_ai_coach:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+
+# --- Generate suggestions after user clicks submit ---
+if submit_btn:
+    # Construct the prompt using the selected mood, symptoms, and energy level
+    prompt = f"""
+    The user is currently feeling: {user_mood}.
+    Symptoms reported: {', '.join(symptoms) if symptoms else 'None'}.
+    Energy level: {energy_level}/10.
+
+    Based on this, please provide a friendly, supportive wellness suggestion and personalized nutrition or lifestyle tip.
+    """
     
-    if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.write(user_input)
+    # Get response from the AI based on the prompt
+    ai_response = openai_config.get_response(prompt)
 
-        
-        response = f"Thank you for your question! Let's explore that topic together."
-        st.session_state.messages.append({"role": "assistant", "content": response})
+    # Store assistant's response in session state
+    st.session_state.messages_ai_coach.append({"role": "assistant", "content": ai_response})
+    with st.chat_message("assistant"):
+        st.write(ai_response)
 
-        with st.chat_message("assistant"):
-            st.write(response)
+user_input = st.chat_input("Ask your coach...", key="user_input")
+
+if user_input:
+    st.session_state.messages_ai_coach.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.write(user_input)
+
+    prompt = f"""
+    The user is currently feeling: {user_mood}.
+    Symptoms reported: {', '.join(symptoms) if symptoms else 'None'}.
+    Energy level: {energy_level}/10.
+    User said: {user_input}
+
+    Based on this, provide a thoughtful response and potentially adjust wellness suggestions or tips.
+    """
+
+    # Get response from the AI based on user input
+    response = openai_config.get_response(prompt)
+    
+    st.session_state.messages_ai_coach.append({"role": "assistant", "content": response})
+    with st.chat_message("assistant"):
+        st.write(response)
+
+
+
+
+
+
+
+
 
 
 def lifestyle_tips():
@@ -56,90 +102,32 @@ def lifestyle_tips():
     if "messages_lifestyle_tips" not in st.session_state:
         st.session_state.messages_lifestyle_tips = []
 
-    for message in st.session_state.messages:
+    for message in st.session_state.messages_lifestyle_tips:
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
     user_input = st.chat_input("Ask your coach...", key="user_input")
 
     if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
+        st.session_state.messages_lifestyle_tips.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.write(user_input)
 
         # Add the dynamic prompt based on user's choice
-        if user_choice == "Talk with Coach":
+        if user_mood == "Talk with Coach":
             response = openai_config.get_response(f"Wellness coach: {user_input}")
-        elif user_choice == "Lifestyle Tips":
+        elif user_mood == "Lifestyle Tips":
             response = openai_config.get_response(f"Provide wellness lifestyle tips based on: {user_input}")
-        elif user_choice == "Mood Tracker":
+        elif user_mood == "Mood Tracker":
             response = openai_config.get_response(f"How can I improve my mood based on: {user_input}")
         else:
             response = openai_config.get_response(user_input)
 
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.session_state.messages_lifestyle_tips.append({"role": "assistant", "content": response})
 
         with st.chat_message("assistant"):
             st.write(response)
 
 
-def mood_tracker():
-    st.subheader("Mood Tracker")
-    st.write("Track your mood and well-being.")
-    mood = st.selectbox("How are you feeling today?", ["Happy", "Sad", "Anxious", "Excited", "Calm"])
 
-    if mood:
-        st.session_state.messages.append({"role": "user", "content": f"Mood: {mood}"})
-        response = f"Thank you for sharing your mood: {mood}. It's important to acknowledge how you feel."
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        st.write(response)
-
-
-def suggestion():
-    st.subheader("Suggestions")
-    st.write("Get suggestions for improving your wellness.")
-    suggestions = [
-        "Try a new hobby or activity.",
-        "Spend time in nature.",
-        "Connect with friends or family.",
-        "Set small, achievable goals.",
-        "Practice gratitude daily."
-    ]
-    for suggestion in suggestions:
-        st.write(f"- {suggestion}")
-
-
-if user_choice == "Talk with Coach":
-    talk_with_coach()
-elif user_choice == "Lifestyle Tips":
-    if cycle_phase == "Menstrual":
-        st.write("Tip: During your Menstrual phase, prioritize rest and relaxation. Focus on calming activities such as meditation and light walking.")
-    elif cycle_phase == "Follicular":
-        st.write("Tip: During the Follicular phase, it's a great time to plan new projects, focus on nutrition, and engage in more vigorous activities like strength training.")
-    elif cycle_phase == "Ovulation":
-        st.write("Tip: During the Ovulatory phase, try social activities, communication, and networking. Your energy and confidence will be high!")
-    elif cycle_phase == "Luteal":
-        st.write("Tip: In the Luteal phase, focus on self-care, emotional balance, and stress reduction. Try gentle exercises like yoga and focus on healthy eating.")
-    elif cycle_phase == "Perimenopause":
-        st.write("Tip: During Perimenopause, maintain a balanced diet and focus on gentle exercises. Managing stress and sleep is also important.")
-    elif cycle_phase == "Menopause":
-        st.write("Tip: During Menopause, prioritize your bone health and stay active with regular, low-impact exercises.")
-
-elif user_choice == "Mood Tracker":
-    mood_tracker()
-
-elif user_choice == "Suggestion":
-    st.write(f"Here are suggestions for your {cycle_phase} phase. These suggestions are tailored to your hormonal changes and can help improve your wellness.")
-    if cycle_phase == "Menstrual":
-        st.write("Suggestion: Get plenty of sleep, eat foods rich in iron, and reduce stress.")
-    elif cycle_phase == "Follicular":
-        st.write("Suggestion: Engage in high-energy activities and focus on balanced nutrition, especially protein-rich foods.")
-    elif cycle_phase == "Ovulation":
-        st.write("Suggestion: Consider taking advantage of your high energy levels with more social interactions, creative projects, and cardio workouts.")
-    elif cycle_phase == "Luteal":
-        st.write("Suggestion: Practice mindfulness, ensure you're getting enough rest, and avoid overexerting yourself.")
-    elif cycle_phase == "Perimenopause":
-        st.write("Suggestion: Incorporate strength training and focus on a healthy diet to support hormonal balance.")
-    elif cycle_phase == "Menopause":
-        st.write("Suggestion: Focus on maintaining bone health and managing stress through relaxation techniques.")
 

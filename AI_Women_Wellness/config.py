@@ -1,7 +1,7 @@
 import openai
 
 class OpenAIConfig:
-    def __init__(self, api_key: str = "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", model: str = "gpt-4o-mini"):
+    def __init__(self, api_key: str = "api_key", model: str = "gpt-4o-mini"):
         """
         Initializes the OpenAI API configuration with the given API key and model.
         """
@@ -20,7 +20,8 @@ class OpenAIConfig:
         :return: The generated AI response.
         """
         try:
-            system_prompt = "You are a calm, empathetic, and friendly wellness coach. Your responses should be thoughtful and supportive. Your goal is to help users feel empowered and informed about their health, fitness, and emotional well-being."
+            system_prompt = "You are a calm, empathetic, and friendly wellness coach. Your responses should be thoughtful and supportive. " \
+            "Your goal is to help users feel empowered and informed about their health, fitness, and emotional well-being."
             user_prompt = f"The user asked: {prompt}."
             final_prompt = f"{system_prompt}\n{user_prompt}"
             response = openai.ChatCompletion.create(
