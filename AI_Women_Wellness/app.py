@@ -1,9 +1,8 @@
 import streamlit as st
-from config import OpenAIConfig
+from config import LocalAIConfig
 
 # API key
-api_key = "api_key"
-openai_config = OpenAIConfig(api_key=api_key)
+openai_config = LocalAIConfig(model_name="gpt2-medium")
 
 st.title("AI Women Wellness Coach!")
 st.write("Talk to your wellness companion. I'm here to help you with your wellness journey.")

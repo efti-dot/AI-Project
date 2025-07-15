@@ -1,39 +1,39 @@
-import openai
+# config.py
+from transformers import pipeline, GPT2LMHeadModel, GPT2Tokenizer
+import torch
 
-class OpenAIConfig:
-    def __init__(self, api_key: str = "api_key", model: str = "gpt-4o-mini"):
+class LocalAIConfig:
+    def __init__(self, model_name: str = "gpt2-medium"):
         """
-        Initializes the OpenAI API configuration with the given API key and model.
+        Initializes the local Hugging Face transformer model for text generation.
         """
-        self.api_key = api_key
-        self.model = model
-        
-        openai.api_key = self.api_key
+        print("🔁 Loading local model...")
+        self.device = 0 if torch.cuda.is_available() else -1
+        self.generator = pipeline(
+            "text-generation",
+            model=model_name,
+            tokenizer=model_name,
+            device=self.device
+        )
 
     def get_response(self, prompt: str, temperature: float = 0.7, max_tokens: int = 150):
         """
-        Sends a request to OpenAI's API and returns the response.
-        
-        :param prompt: The input prompt for the model.
-        :param temperature: Sampling temperature (default is 0.7).
-        :param max_tokens: Maximum number of tokens to generate (default is 150).
-        :return: The generated AI response.
+        Generates a text response using GPT-2 locally.
         """
         try:
-            system_prompt = "You are a calm, empathetic, and friendly wellness coach. Your responses should be thoughtful and supportive. " \
-            "Your goal is to help users feel empowered and informed about their health, fitness, and emotional well-being."
-            user_prompt = f"The user asked: {prompt}."
-            final_prompt = f"{system_prompt}\n{user_prompt}"
-            response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=temperature,
-                max_tokens=max_tokens
+            system_prompt = (
+                "You are a calm, empathetic, and friendly wellness coach. "
+                "Your responses should be thoughtful and supportive. "
+                "Your goal is to help users feel empowered and informed about their health and well-being.\n"
             )
-            return response['choices'][0]['message']['content']
+            final_prompt = system_prompt + prompt
+
+            results = self.generator(final_prompt, max_length=max_tokens, temperature=temperature, num_return_sequences=1)
+            return results[0]['generated_text'][len(final_prompt):].strip()  # remove the prompt from output
         except Exception as e:
-            print(f"Error communicating with OpenAI API: {e}")
+            print(f"Error generating response locally: {e}")
             return "Sorry, I couldn't process your request at the moment. Please try again later."
+
 
     '''def get_prompt(self, cycle_phase: str) -> str:
         """
