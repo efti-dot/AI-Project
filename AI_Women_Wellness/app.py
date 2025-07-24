@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # API key
-api_key = "api_key"
+api_key = "api-key"
 openai_config = OpenAIConfig(api_key=api_key)
 
 if "page" not in st.session_state:
@@ -23,7 +23,7 @@ def sidebar_nav():
     st.header("Navigation")
     st.write("Share your experience:")
     if st.session_state.get("onboarding_complete", False):
-        nav_options = ["Dashboard", "Talk with Coach", "Tracker", "Settings"]
+        nav_options = ["Dashboard", "Talk with Coach", "Tracker", "Overview", "Settings"]
     else:
         nav_options = [
             "Welcome", "Basic info", "Symptom", "Lifestyle", "Goal",
@@ -143,6 +143,8 @@ def dashboard_page():
     symptoms = st.session_state.get("symptoms", [])
     goals = st.session_state.get("goals", [])
 
+    st.write(f"**Symptoms Tracking:** {', '.join(symptoms) if symptoms else 'None'}")
+
     if period == "Yes" and phase == "No":
         st.markdown("#### Cycle Phase Tracker")
         phases = ["Menstrual", "Follicular", "Ovulatory", "Luteal"]
@@ -184,7 +186,7 @@ def dashboard_page():
         st.info("No tracked symptoms or goals selected yet.")
 
     # AI Overview
-    st.markdown("#### AI Wellness Overview")
+    st.markdown("#### FINEX Insights")
     overview_prompt = f"""
     User cycle: {period}, phase: {phase}, hormones: {hormones}.
     Top symptoms: {', '.join(symptoms) if symptoms else 'None'}.
@@ -282,6 +284,35 @@ def tracker_page():
         st.rerun()
 
 
+def Overview_page():
+    st.subheader("Overview")
+    # Get recent tracker data or onboarding symptoms
+    symptoms = st.session_state.get("symptoms", [])
+    energy = st.session_state.get("energy_level", 5)
+    mood = st.session_state.get("user_mood", "Neutral")
+
+    # Calculate a simple score
+    symptom_count = len(symptoms)
+    # You can adjust this logic as needed
+    if symptom_count == 0 and energy >= 7 and mood == "Happy":
+        score = "Low"
+        color = "green"
+    elif symptom_count <= 2 and energy >= 4:
+        score = "Medium"
+        color = "orange"
+    else:
+        score = "High"
+        color = "red"
+
+    st.markdown(f"### Symptom Score: <span style='color:{color}'>{score}</span>", unsafe_allow_html=True)
+
+    # Optionally, show a summary
+    st.write(f"**Symptoms reported:** {', '.join(symptoms) if symptoms else 'None'}")
+    st.write(f"**Energy level:** {energy}/10")
+    st.write(f"**Mood:** {mood}")
+    st.subheader("Suggested Wellness Tips")
+
+
 def settings_page():
     st.header("Settings")
     st.write("Manage your profile and notifications.")
@@ -289,20 +320,43 @@ def settings_page():
     st.selectbox("Language", ["English"], index=0)
     st.subheader("Profile Settings")
     st.text_input("Name", value="", placeholder="Enter your name")
+    st.write("Basic Information")
+    period = st.selectbox("Do you have a regular cycle?", ["Yes", "No"], index=0 if st.session_state.get("period", "Yes") == "Yes" else 1)
+    phase = st.selectbox("Are you in perimenopause, menopause, or post-menopause?", ["Yes", "No"], index=0 if st.session_state.get("phase", "Yes") == "Yes" else 1)
+    hormones = st.selectbox("Are you currently on hormonal birth control or HRT?", ["Yes", "No"], index=0 if st.session_state.get("hormones", "Yes") == "Yes" else 1)
     st.write("Symptom Preferences")
-    symptoms = st.multiselect("Select symptoms:", ["Fatigue", "Mood", "Sleep", "Cravings", "Weight", "Cramps", "Anxiety", "Brain fog", 
-                                                   "Hot Flashes", "Irregular cycles"], max_selections=3)
+    symptoms = st.multiselect(
+        "Select symptoms:",
+        ["Fatigue", "Mood", "Sleep", "Cravings", "Weight", "Cramps", "Anxiety", "Brain fog", "Hot Flashes", "Irregular cycles"],
+        default=st.session_state.get("symptoms", [])
+    )
     st.write("Lifestyle Preferences")
-    dietary_style = st.selectbox("Dietary Style", ["Omnivore", "Vegetarian", "Vegan", "Pescatarian", "Keto", "Other"], index=0)
-    activity_level = st.selectbox("Activity Level", ["Low", "Moderate", "High"], index=0)
-    stress_level = st.slider("Stress Level", 0, 10, 5)
+    dietary_style = st.selectbox(
+        "Dietary Style",
+        ["Omnivore", "Vegetarian", "Vegan", "Pescatarian", "Keto", "Other"],
+        index=["Omnivore", "Vegetarian", "Vegan", "Pescatarian", "Keto", "Other"].index(st.session_state.get("dietary_style", "Omnivore"))
+    )
+    activity_level = st.selectbox(
+        "Activity Level",
+        ["Low", "Moderate", "High"],
+        index=["Low", "Moderate", "High"].index(st.session_state.get("activity_level", "Low"))
+    )
+    stress_level = st.slider("Stress Level", 0, 10, st.session_state.get("stress_level", 5))
     st.write("Goal Preferences")
-    goals = st.multiselect("Select your goals:", ["Balance hormones", "Track my cycle", "Improve mood", "Boost energy", "Reduce cravings", 
-                                                  "Support weight changes", "Feel more in control", "Learn what’s happening in my body"])
+    goals = st.multiselect(
+        "Select your goals:",
+        ["Balance hormones", "Track my cycle", "Improve mood", "Boost energy", "Reduce cravings", 
+         "Support weight changes", "Feel more in control", "Learn what’s happening in my body"],
+        default=st.session_state.get("goals", [])
+    )
     st.write("Set Daily Reminder")
-    daily_reminder = st.checkbox("Yes, remind me daily", value=True)
+    daily_reminder = st.checkbox("Yes, remind me daily", value=st.session_state.get("daily_reminder", True))
+
     save_btn = st.button("Save Settings")
     if save_btn:
+        st.session_state.period = period
+        st.session_state.phase = phase
+        st.session_state.hormones = hormones
         st.session_state.symptoms = symptoms
         st.session_state.dietary_style = dietary_style
         st.session_state.activity_level = activity_level
@@ -310,6 +364,7 @@ def settings_page():
         st.session_state.goals = goals
         st.session_state.daily_reminder = daily_reminder
         st.success("Settings saved successfully!")
+        st.session_state.mood = "Dashboard"
         st.rerun()
 
 
@@ -343,6 +398,8 @@ elif st.session_state.mood == "Talk with Coach":
     talk_with_coach_page()
 elif st.session_state.mood == "Tracker":
     tracker_page()
+elif st.session_state.mood == "Overview":
+    Overview_page()
 elif st.session_state.mood == "Settings":
     settings_page()
 
