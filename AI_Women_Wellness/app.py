@@ -4,6 +4,7 @@ from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.runtime.runtime import Runtime
 import matplotlib.pyplot as plt
 import numpy as np
+import datetime
 
 # API key
 api_key = "api-key"
@@ -50,16 +51,54 @@ def welcome_page():
 def basic_info_page():
     st.subheader("Basic Info")
     st.write("Please tell us about your cycle.")
+    # Ask if the user has a regular cycle
     period = st.selectbox("Do you have a regular cycle?", ["Yes", "No"], index=0)
     phase = st.selectbox("Are you in perimenopause, menopause, or post-menopause?", ["Yes", "No"], index=0)
     hormones = st.selectbox("Are you currently on hormonal birth control or HRT?", ["Yes", "No"], index=0)
+    
+    # Show cycle-related fields only if the user selects "Yes" for regular cycle
+    if period == "Yes":
+        last_period_date = st.date_input("Last Period Start Date", value=datetime.date.today())
+        cycle_length = st.number_input("Cycle Length (Days)", min_value=21, max_value=35, value=28)
+        period_duration = st.number_input("Period Duration (Days)", min_value=1, max_value=10, value=5)
+    else:
+        last_period_date = None
+        cycle_length = None
+        period_duration = None
+
     ctn_btn = st.button("Continue")
     if ctn_btn:
+        # Save the cycle data to session state if available
         st.session_state.period = period
         st.session_state.phase = phase
         st.session_state.hormones = hormones
+        if period == "Yes":
+            st.session_state.last_period_date = str(last_period_date)
+            st.session_state.cycle_length = cycle_length
+            st.session_state.period_duration = period_duration
         st.session_state.mood = "Symptom"
         st.rerun()
+
+
+def calculate_cycle_phase(last_period_date, cycle_length, period_duration):
+    today = datetime.date.today()
+    last_period_date = datetime.datetime.strptime(last_period_date, "%Y-%m-%d").date()
+
+    days_since_last_period = (today - last_period_date).days
+
+    cycle_day = days_since_last_period % cycle_length
+
+    if cycle_day <= period_duration:
+        phase = "Menstrual"
+    elif cycle_day <= 14:
+        phase = "Follicular"
+    elif cycle_day <= 17:
+        phase = "Ovulatory"
+    else:
+        phase = "Luteal"
+
+    return phase, cycle_day
+
 
 def symptom_page():
     st.subheader("Symptom Tracker")
@@ -132,6 +171,32 @@ def confirmation_page():
         st.session_state.mood = "Daily remainder"
         st.rerun()
 
+def get_phase_message(phase, cycle_day, symptoms, period, phase_status):
+    symptoms = [s.lower() for s in symptoms]
+
+    # Perimenopause or Menopause
+    if period == "No":
+        if phase_status == "Yes":
+            return "Your hormones are shifting — and your body’s wisdom is adapting. Think steady, blood sugar–balancing meals. Cooling, hydrating foods can be your calm in the hormonal storm."
+        else:
+            return "You’ve crossed the hormonal threshold — now it’s about thriving in your new rhythm. Anti-inflammatory meals, protein-rich plates, and soul-soothing nourishment help you feel clear, calm, and strong."
+
+    # Menstrual
+    if phase == "Menstrual" or "fatigue" in symptoms:
+        return "This is your rest-and-rebuild window. Lean into warmth — soups, slow-cooked meals, and foods that feel like comfort and nourishment."
+    # Follicular
+    if phase == "Follicular" or "low mood" in symptoms:
+        return "Energy is picking up — and so is estrogen. It’s a beautiful time to nourish your brain with healthy fats, leafy greens, and fermented foods that lift your mood and mindset."
+    # Ovulatory
+    if phase == "Ovulatory" or "bloating" in symptoms:
+        return "Your body’s in cleanse-and-glow mode. Think colorful veggies, fiber, and meals that feel light but deeply satisfying. Support your liver — it’s your hormone processing powerhouse."
+    # Luteal
+    if phase == "Luteal" or "cravings" in symptoms or "anxiety" in symptoms:
+        return "This is the slow-down phase. Cravings might rise — that’s okay. Let’s lean into grounding, mineral-rich foods like sweet potatoes, seeds, and dark chocolate to steady your mood and energy."
+    
+    return "Stay in tune with your body — your wellness journey is personal and powerful."
+
+
 
 def dashboard_page():
     st.header("FENYX")
@@ -142,6 +207,32 @@ def dashboard_page():
     hormones = st.session_state.get("hormones", "No")
     symptoms = st.session_state.get("symptoms", [])
     goals = st.session_state.get("goals", [])
+    
+    # Get cycle information from session state
+    last_period_date = st.session_state.get("last_period_date", "")
+    cycle_length = st.session_state.get("cycle_length", 28)
+    period_duration = st.session_state.get("period_duration", 5)
+
+    # Calculate cycle phase and day
+    if last_period_date:
+        phase, cycle_day = calculate_cycle_phase(last_period_date, cycle_length, period_duration)
+        st.write(f"**Current Cycle Day**: {cycle_day}")
+        st.write(f"**Current Phase**: {phase}")
+        
+        # Display the cycle phase visually
+        phases = ["Menstrual", "Follicular", "Ovulatory", "Luteal"]
+        phase_colors = ["#e57373", "#64b5f6", "#ffd54f", "#81c784"]
+        
+        phase_index = phases.index(phase)
+        
+        fig, ax = plt.subplots(figsize=(8,2))
+        ax.bar([cycle_day], [1], color=phase_colors[phase_index], width=1)
+        ax.set_yticks([])
+        ax.set_xlabel("Cycle Day")
+        ax.legend([phase], loc="upper right")
+        st.pyplot(fig)
+    else:
+        st.info("Cycle data not available.")
 
     st.write(f"**Symptoms Tracking:** {', '.join(symptoms) if symptoms else 'None'}")
 
